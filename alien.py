@@ -1,5 +1,5 @@
 import pygame
-from player import *
+
 class Alien(pygame.sprite.Sprite):
     def __init__(self, color, x, y):
         super().__init__()
@@ -21,9 +21,10 @@ class Alien(pygame.sprite.Sprite):
 
 
 class Extra(pygame.sprite.Sprite):
-    def __init__(self, side, screen_width):
+    def __init__(self, side, bonus, screen_width):
         super().__init__()
-        self.image = pygame.image.load('graphics/extra.png').convert_alpha()
+        file_path = 'graphics/' + bonus + '.png'
+        self.image = pygame.image.load(file_path).convert_alpha()
 
         if side == 'right':
             x = screen_width + 50

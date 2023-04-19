@@ -2,6 +2,7 @@ import sys
 import json
 import pygame
 from player import Player
+import player
 from sys import exit
 import obstacle
 from alien import Alien
@@ -27,7 +28,7 @@ class Game:
         # Health and score setup
         self.lives = 4
         self.live_surf = pygame.image.load('graphics/player.png').convert_alpha()
-        self.live_x_start_pos = screen_width - (self.live_surf.get_size()[0] * 3 + 30)
+        self.live_x_start_pos = screen_width - (self.live_surf.get_size()[0] + 80)
         self.score = 0
         self.font = pygame.font.Font('font/Pixeled.ttf', 20)
         self.main_menu_font = pygame.font.Font('font/Pixeled.ttf', 36)
@@ -109,7 +110,8 @@ class Game:
     def extra_alien_timer(self):
         self.extra_spawn_time -= 1
         if self.extra_spawn_time <= 0:
-            self.extra.add(Extra(choice(['right','left']), screen_width))
+            self.bonus = choice(['extra', 'extra', 'extra_live', 'extra_live','extra_live', 'extra_coin', 'extra_coin', 'extra_coin', 'extra_coin', 'extra_slow_speed'])
+            self.extra.add(Extra(choice(['right','left']), self.bonus, screen_width))
             self.extra_spawn_time = randint(400, 800)
 
     def collision_checks(self):
@@ -129,7 +131,15 @@ class Game:
                     self.new_level_check = pygame.time.get_ticks()
                 #extra collisions
                 if pygame.sprite.spritecollide(laser, self.extra, True):
+                    if(self.bonus == 'extra'):
+                        player.boost = 1
+                    if (self.bonus == 'extra_live'):
+                        self.lives += 1
                     self.score += 500
+                    if(self.bonus == 'extra_coin'):
+                        self.score *= 2
+                    if(self.bonus == 'extra_slow_speed'):
+                        self.alien_speed -= 0.25
                     laser.kill()
         #alien lasers
         if self.alien_lasers:
@@ -139,6 +149,7 @@ class Game:
                 if pygame.sprite.spritecollide(laser, self.player, False):
                      laser.kill()
                      self.lives -= 1
+                     player.boost = 0
                      if self.lives <= 0:
                         for alien in self.aliens:
                             alien.kill()
@@ -152,9 +163,10 @@ class Game:
                             alien.kill()
 
     def display_lives(self):
-        for live in range(self.lives - 1):
-            x = self.live_x_start_pos + (live * (self.live_surf.get_size()[0] + 10))
-            screen.blit(self.live_surf, (x, 8))
+        live_count = self.font.render(f'{self.lives - 1} X', False, 'white')
+        live_count_rect = live_count.get_rect(topleft = (self.live_x_start_pos + 80,-8))
+        screen.blit(live_count, live_count_rect)
+        screen.blit(self.live_surf, (self.live_x_start_pos, 7))
 
     def display_score(self):
         score_surf = self.font.render(f'score: {self.score}', False, 'white')
@@ -178,7 +190,16 @@ class Game:
     def new_level(self):
         self.alien_speed += 0.25
         self.level += 1
-        if (self.lives < 4): self.lives += 1
+        self.lives += 1
+        self.alien_setup(rows=6, cols=8)
+
+    def start_settings(self):
+        self.safe_high_score = False
+        self.level = 1
+        self.alien_speed = 1
+        self.lives = 4
+        self.score = 0
+        self.create_multiple_obstacles(*self.obstacle_x_positions, x_start=screen_width / 15, y_start=480)
         self.alien_setup(rows=6, cols=8)
 
     def end_game(self):
@@ -200,13 +221,7 @@ class Game:
             screen.blit(record_surf, record_surf_rect)
             keys = pygame.key.get_pressed()
             if keys[pygame.K_SPACE]:
-                self.safe_high_score = False
-                self.level = 1
-                self.alien_speed = 1
-                self.lives = 4
-                self.score = 0
-                self.create_multiple_obstacles(*self.obstacle_x_positions, x_start = screen_width / 15, y_start = 480)
-                self.alien_setup(rows=6, cols=8)
+                self.start_settings()
 
     def main_menu(self):
         score = self.high_score['high_score']
@@ -222,13 +237,9 @@ class Game:
         keys = pygame.key.get_pressed()
         if keys[pygame.K_SPACE]:
             self.game_is_work = True
-            self.safe_high_score = False
-            self.level = 1
-            self.alien_speed = 1
-            self.lives = 4
-            self.score = 0
-            self.create_multiple_obstacles(*self.obstacle_x_positions, x_start=screen_width / 15, y_start=480)
-            self.alien_setup(rows=6, cols=8)
+            self.start_settings()
+
+
 
     def run(self):
         if(not self.game_is_work):
@@ -255,9 +266,6 @@ class Game:
             self.end_game()
             self.victory_message()
 
-
-        # Обновим все группы спрайтов
-        # Нарисуем все группы спрайтов
 
 
 
