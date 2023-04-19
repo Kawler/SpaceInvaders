@@ -272,8 +272,8 @@ if __name__ == '__main__':
     game = Game()
 
     ALIENLASER = pygame.USEREVENT + 1
+    BONUS = pygame.USEREVENT + 2
     pygame.time.set_timer(ALIENLASER, 800)
-
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
