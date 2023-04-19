@@ -1,5 +1,5 @@
 import sys
-import threading, time
+import json
 import pygame
 from player import Player
 from sys import exit
@@ -14,8 +14,15 @@ class Game:
         #Player setup
         player_sprite = Player((screen_width / 2, screen_height), screen_width,5)
         self.player = pygame.sprite.GroupSingle(player_sprite)
-
         self.level = 1
+        self.game_is_work = False
+        self.high_score = {
+            'high_score': 0,
+        }
+        with open('data.txt') as score_file:
+            self.high_score = json.load(score_file)
+
+        self.safe_high_score = False
 
         # Health and score setup
         self.lives = 4
@@ -23,6 +30,7 @@ class Game:
         self.live_x_start_pos = screen_width - (self.live_surf.get_size()[0] * 3 + 30)
         self.score = 0
         self.font = pygame.font.Font('font/Pixeled.ttf', 20)
+        self.main_menu_font = pygame.font.Font('font/Pixeled.ttf', 36)
 
         #obstacle setup
         self.shape = obstacle.shape
@@ -30,11 +38,11 @@ class Game:
         self.blocks = pygame.sprite.Group()
         self.obstacle_amount = 4
         self.obstacle_x_positions = [num * (screen_width / self.obstacle_amount) for num in range(self.obstacle_amount)]
-        self.create_multiple_obstacles(*self.obstacle_x_positions, x_start = screen_width / 15, y_start = 480)
+        #self.create_multiple_obstacles(*self.obstacle_x_positions, x_start = screen_width / 15, y_start = 480)
 
         # Alien setup
         self.aliens = pygame.sprite.Group()
-        self.alien_setup(rows = 6, cols = 8)
+        #self.alien_setup(rows = 6, cols = 8)
         self.alien_direction = 1
         self.alien_speed = 1
         self.alien_lasers = pygame.sprite.Group()
@@ -168,39 +176,85 @@ class Game:
                 self.new_level()
 
     def new_level(self):
-        self.alien_speed += 0.35
+        self.alien_speed += 0.25
         self.level += 1
         if (self.lives < 4): self.lives += 1
         self.alien_setup(rows=6, cols=8)
 
     def end_game(self):
         if(self.lives <= 0):
-            end_game_surf = self.font.render(f'Game over. Score: {self.score}', False, 'white')
+            if (not self.safe_high_score and self.high_score['high_score'] < self.score):
+                self.high_score['high_score'] = self.score
+                with open('data.txt', 'w') as high_score:
+                    json.dump(self.high_score, high_score)
+                self.safe_high_score = True
+            score = self.high_score['high_score']
+            end_game_surf = self.font.render(f'Game over! Score: {self.score}', False, 'white')
             end_game_rect = end_game_surf.get_rect(center=(screen_width / 2, screen_height / 2))
+            record_surf = self.font.render(f'Your record: {score}', False, 'white')
+            record_surf_rect = record_surf.get_rect(center=(screen_width / 2, screen_height / 2 + 50))
+            end_game_restart = self.font.render('Press `Space` to restart!', False, 'white')
+            end_game_restart_rect = end_game_restart.get_rect(center=(screen_width / 2, screen_height / 2 + 100))
             screen.blit(end_game_surf, end_game_rect)
+            screen.blit(end_game_restart, end_game_restart_rect)
+            screen.blit(record_surf, record_surf_rect)
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_SPACE]:
+                self.safe_high_score = False
+                self.level = 1
+                self.alien_speed = 1
+                self.lives = 4
+                self.score = 0
+                self.create_multiple_obstacles(*self.obstacle_x_positions, x_start = screen_width / 15, y_start = 480)
+                self.alien_setup(rows=6, cols=8)
+
+    def main_menu(self):
+        score = self.high_score['high_score']
+        title = self.main_menu_font.render('Space Invaders', False, 'green')
+        title_rect = title.get_rect(center=(screen_width / 2, screen_height / 2))
+        record_surf = self.font.render(f'Your record: {score}', False, 'white')
+        record_surf_rect = record_surf.get_rect(center=(screen_width / 2, screen_height / 2 + 50))
+        game_start = self.font.render('Press `Space` to start!', False, 'white')
+        game_start_rect = game_start.get_rect(center=(screen_width / 2, screen_height / 2 + 80))
+        screen.blit(title, title_rect)
+        screen.blit(record_surf, record_surf_rect)
+        screen.blit(game_start, game_start_rect)
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_SPACE]:
+            self.game_is_work = True
+            self.safe_high_score = False
+            self.level = 1
+            self.alien_speed = 1
+            self.lives = 4
+            self.score = 0
+            self.create_multiple_obstacles(*self.obstacle_x_positions, x_start=screen_width / 15, y_start=480)
+            self.alien_setup(rows=6, cols=8)
 
     def run(self):
-        self.player.update()
-        self.alien_lasers.update()
-        if(self.lives > 0):
+        if(not self.game_is_work):
+            self.main_menu()
+        else:
+            self.player.update()
+            self.alien_lasers.update()
             self.extra.update()
 
-        self.aliens.update(self.alien_direction)
-        self.alien_position_checker()
-        self.extra_alien_timer()
-        self.collision_checks()
+            self.aliens.update(self.alien_direction)
+            self.alien_position_checker()
+            self.extra_alien_timer()
+            self.collision_checks()
 
-        self.player.sprite.lasers.draw(screen)
-        self.player.draw(screen)
-        self.blocks.draw(screen)
-        self.aliens.draw(screen)
-        self.alien_lasers.draw(screen)
-        self.extra.draw(screen)
-        self.display_lives()
-        self.display_score()
-        self.display_level()
-        self.end_game()
-        self.victory_message()
+            self.player.sprite.lasers.draw(screen)
+            self.player.draw(screen)
+            self.blocks.draw(screen)
+            self.aliens.draw(screen)
+            self.alien_lasers.draw(screen)
+            self.extra.draw(screen)
+            self.display_lives()
+            self.display_score()
+            self.display_level()
+            self.end_game()
+            self.victory_message()
+
 
         # Обновим все группы спрайтов
         # Нарисуем все группы спрайтов
